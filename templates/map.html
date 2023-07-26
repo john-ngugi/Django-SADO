@@ -1,0 +1,321 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500&family=Poppins:wght@700&family=Roboto&display=swap');
+        #loading-overlay,
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.5);
+            z-index: 9999;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: opacity 0.5s ease-out;
+        }
+        
+        .loaded #loading-overlay {
+            opacity: 0;
+        }
+        
+        #loading-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        #loading-message {
+            margin-top: 10px;
+        }
+        
+        .main-content {
+            width: 100%;
+            height: 70vh;
+            display: flex;
+        }
+        
+        .map {
+            width: 100%;
+            height: 70vh;
+            left: 0;
+            right: 0;
+            position: absolute;
+        }
+        
+        .stats {
+            /*background-color: rgb(255, 255, 255);*/
+            background-color: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            width: 30vw;
+            height: 50%;
+            position: relative;
+            float: right;
+            margin-left: 70vw;
+            margin-top: 50vh;
+            border-radius: 20px;
+        }
+        
+        .stats p {
+            font-size: small;
+            font-family: 'Roboto', sans-serif;
+            padding-left: 20px;
+        }
+        
+        .stats h1 {
+            color: #563D7C;
+            font-family: 'Roboto', sans-serif;
+            padding-left: 20px;
+        }
+        
+        .next {
+            position: relative;
+            margin-top: 170px;
+            width: 100vw;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .form-dates {
+            background-color: #563D7C;
+            width: 100%;
+            height: 50px;
+        }
+        
+        .form-dates h1 {
+            padding-left: 20px;
+            font-family: 'Roboto', sans-serif;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        
+        #month,
+        .form-dates input {
+            border-color: rgb(255, 255, 255);
+            border-radius: 10px 10px;
+            box-shadow: none;
+            outline: none;
+            border-width: 1px;
+            color: black;
+            text-align: center;
+            padding-left: 20px;
+            font-family: 'Roboto', sans-serif;
+            width: 180px;
+            height: 30px;
+            margin-bottom: 0.8%;
+            margin-top: 0.8%;
+        }
+        
+        .form-dates label {
+            font-family: 'Roboto', sans-serif;
+            color: white;
+            padding-left: 20px;
+        }
+        
+        .smt-btn {
+            margin-left: 20px;
+            font-family: 'Roboto', sans-serif;
+            background-image: linear-gradient(rgba(107, 190, 5, 0.6), rgba(107, 190, 5, 0.8));
+            outline: none;
+            color: white;
+            height: 35px;
+            width: 90px;
+            box-shadow: none;
+            border-style: solid;
+            border-radius: 10%;
+            border: none;
+        }
+        
+        .smt-btn:hover {
+            background-image: linear-gradient(rgba(107, 190, 5, 0.8), rgba(107, 190, 5, 0.6));
+        }
+        
+        #loadingScreen p {
+            margin-top: 10px;
+        }
+        
+        #month option {
+            text-align: center;
+        }
+        
+        #legend {
+            position: absolute;
+            margin-top: 75vh;
+        }
+        
+        #legend i {
+            position: absolute;
+            margin-top: 75vh;
+        }
+        
+        .graph {
+            width: 100vw;
+            margin-top: 180px;
+        }
+    </style>
+</head>
+
+<body class="body">
+    <div id="loading-overlay">
+        <div id="loading-content">
+            <img src="{% static '/images/output-onlinegiftools (3).gif' %}" alt="Loading...">
+            <p id="loading-message" class="text-dark">Loading...</p>
+        </div>
+    </div>
+    <div id="loadingScreen" style="display: none;">
+        <div id="loading-content">
+            <img src="{% static '/images/output-onlinegiftools (3).gif' %}" alt="Loading...">
+            <p id="processing-message">Processing...</p>
+        </div>
+    </div>
+    <!-- <div class="form-dates text-white">
+        <h1>VHI Monitoring system</h1>
+    </div> -->
+    <form class="form-dates" method="POST" onsubmit="showLoadingScreen()">
+        {% csrf_token %}
+        <label for="year_start">Year Start:</label>
+        <input type="number" id="year_start" name="year_start" min="2000" max="2100" required placeholder="2000">
+
+        <label for="year_end">Year End:</label>
+        <input type="number" id="year_end" name="year_end" min="2000" max="2100" required placeholder="2023">
+
+        <label for="month">Month:</label>
+        <select id="month" name="month" required>
+            <option value="1">first Quater</option>
+            <option value="2">Second Quater</option>
+            <option value="3">Third Quater</option>
+            <option value="4">Fourth Quater</option>
+          </select>
+
+        <a href="{% url 'layersPage' %}"><button type="submit" class=" smt-btn">Submit</button></a>
+    </form>
+
+    <div class="main-content">
+        <div class="map" id="m">
+            {{map|safe}}
+        </div>
+        <div class="legend-1">
+            <div class="legend-2" style="background-image: linear-gradient(rgba(255, 0, 0,1),rgb(255, 165, 0),rgba(0,255,0,1));"></div>
+        </div>
+        <div id="legend">
+            <div class="legend-inner">
+                &nbsp; Legend <br>
+            </div>
+        </div>
+
+        <div class="stats">
+            <h1>Quick stats</h1>
+            <div class="charts"></div>
+            <p>MEAN NDVI: {{NDVI_mean}} </p>
+            <p>MEAN VCI: {{VCI_mean}} </p>
+            <p>MEAN TCI: {{TCI_mean}} </p>
+            <p>MEAN VHI: {{VHI_mean}} </p>
+            <p>MEAN DROUGHT INDEX: {{Drought_index_mean}} </p>
+
+        </div>
+    </div>
+    <div class="graph">
+        {{graph|safe}}
+    </div>
+    <div class="next">
+        {{meansTable|safe}}</p>
+    </div>
+    <div class="next">
+        <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Explicabo, iure nam. Ipsum possimus non quo odio repellat ullam quae veritatis facilis. Facilis veniam, cupiditate minus eligendi quibusdam repudiandae excepturi obcaecati.</p>
+    </div>
+    <script>
+        // Define an array of loading messages
+        var loadingMessages = [
+            'Loading data...',
+            'Generating map...',
+            'Adding layers...',
+        ];
+
+        // Get references to the loading overlay and message elements
+        var loadingOverlay = document.getElementById('loading-overlay');
+        var loadingMessage = document.getElementById('loading-message');
+
+        // Show the loading overlay
+        loadingOverlay.style.display = 'block';
+
+        // Update the loading message every 2 seconds
+        var messageIndex = 0;
+        setInterval(function() {
+            if (messageIndex < loadingMessages.length) {
+                loadingMessage.textContent = loadingMessages[messageIndex];
+                messageIndex++;
+            }
+        }, 2000);
+
+        // Hide the loading overlay when the page has finished loading
+        window.addEventListener('load', function() {
+            loadingOverlay.style.display = 'none';
+            document.getElementById('loading-overlay').classList.add('loaded');
+
+        });
+
+        function showLoadingScreen() {
+            var loadingMessage = document.getElementById('processing-message');
+            var processingMessages = [
+                'Processing...',
+                'This is taking longer than usual.\nplease wait...',
+                'Motivating the catographers...',
+                'Processing...'
+            ];
+
+            // Display the loading screen
+            document.getElementById("loadingScreen").style.display = "block";
+
+            var messageIndex = 0;
+            setInterval(function() {
+                if (messageIndex < processingMessages.length) {
+                    loadingMessage.textContent = processingMessages[messageIndex];
+                    messageIndex++;
+                } else {
+                    // Reset the message index if it exceeds the array length
+                    messageIndex = 0;
+                }
+            }, 30000);
+        }
+        // Define the legend colors and labels
+        var legendColors = ['#FF0000', '#00FF00', '#0000FF'];
+        var legendLabels = ['Category 1', 'Category 2', 'Category 3'];
+
+        // Get the legend inner container
+        var legendInner = document.querySelector('.legend-inner');
+
+        // Iterate over the legend colors and labels
+        for (var i = 0; i < legendColors.length; i++) {
+            // Create an <i> element for the legend color
+            var colorElement = document.createElement('i');
+            colorElement.style.backgroundColor = legendColors[i];
+            colorElement.className = 'legend-color';
+
+            // Create a text node for the legend label
+            var labelElement = document.createTextNode(legendLabels[i]);
+
+            // Create a <br> element for line break
+            var brElement = document.createElement('br');
+
+            // Append the elements to the legend inner container
+            legendInner.appendChild(colorElement);
+            legendInner.appendChild(labelElement);
+            legendInner.appendChild(brElement);
+        }
+    </script>
+</body>
+
+</html>
